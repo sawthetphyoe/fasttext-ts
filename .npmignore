@@ -1,0 +1,44 @@
+# Source files (only ship compiled JS)
+src/
+tests/
+
+# Development files
+.eslintrc.json
+.prettierrc
+tsconfig.json
+jest.config.js
+
+# Coverage reports
+coverage/
+
+# IDE files
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Development dependencies
+node_modules/
+
+# Reference folder
+fast-text-language-detector/
+
+# Test files
+*.test.ts
+*.test.js
+test-types.ts
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep the models directory structure but not the binaries
+models/*.bin
+models/*.ftz
+!models/.gitkeep

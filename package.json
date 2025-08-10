@@ -1,0 +1,82 @@
+{
+  "name": "fasttext-ts",
+  "version": "0.1.0-beta.1",
+  "description": "TypeScript-compatible FastText language detection for Node.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "scripts",
+    "models/.gitkeep"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "build:prod": "npm run clean && tsc --declaration --declarationMap --sourceMap",
+    "clean": "rimraf dist",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "download-model": "node scripts/download-model.js",
+    "prepublishOnly": "npm run clean && npm run build:prod && npm run test",
+    "postinstall": "node scripts/download-model.js"
+  },
+  "keywords": [
+    "fasttext",
+    "language-detection",
+    "nlp",
+    "typescript",
+    "natural-language-processing",
+    "language-identification",
+    "text-classification"
+  ],
+  "author": "Saw Thet Phyoe",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sawthetphyoe/fasttext-ts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sawthetphyoe/fasttext-ts/issues"
+  },
+  "homepage": "https://github.com/sawthetphyoe/fasttext-ts#readme",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "jest": "^29.5.0",
+    "prettier": "^3.0.0",
+    "rimraf": "^5.0.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.ts",
+      "!src/**/*.d.ts",
+      "!src/**/*.test.ts"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.ts"
+    ]
+  }
+}

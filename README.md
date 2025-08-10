@@ -383,4 +383,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Support
 
-For issues and questions, please use the [GitHub issues page](https://github.com/sawthetphyoe/fasttext-ts/issues).# fasttext-ts
+For issues and questions, please use the [GitHub issues page](https://github.com/sawthetphyoe/fasttext-ts/issues).
