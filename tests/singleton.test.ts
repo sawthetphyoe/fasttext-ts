@@ -40,13 +40,13 @@ describe('Singleton', () => {
     if (!fs.existsSync(modelPath)) return;
 
     const instance1 = await getInstance();
-    const result1 = await instance1.detectLanguage('Hello world');
+    const result1 = await instance1.detect('Hello world');
     expect(result1.primary?.language).toBe('en');
 
     await unloadInstance();
 
     const instance2 = await getInstance();
-    const result2 = await instance2.detectLanguage('Bonjour monde');
+    const result2 = await instance2.detect('Bonjour monde');
     expect(result2.primary?.language).toBe('fr');
 
     expect(instance1).not.toBe(instance2);

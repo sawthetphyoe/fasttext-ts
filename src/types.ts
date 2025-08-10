@@ -14,6 +14,17 @@ export interface DetectorOptions {
   maxQueueSize?: number;
   timeout?: number;
   confidenceThreshold?: number;
+  cache?: boolean;
+  cacheSize?: number;
+  cacheTTL?: number;
+  autoCleanup?: boolean;
+}
+
+export interface DetectionOptions {
+  threshold?: number;
+  topK?: number;
+  includeLanguageName?: boolean;
+  returnAll?: boolean;
 }
 
 export interface WorkerStatus {

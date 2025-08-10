@@ -57,7 +57,7 @@ describe('FastTextLanguageDetector', () => {
     it('should detect English text', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('Hello, how are you today?');
+      const result = await detector.detect('Hello, how are you today?');
       expect(result.primary).toBeDefined();
       expect(result.primary?.language).toBe('en');
       expect(result.primary?.confidence).toBeGreaterThan(0.9);
@@ -66,7 +66,7 @@ describe('FastTextLanguageDetector', () => {
     it('should detect French text', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('Bonjour, comment allez-vous?');
+      const result = await detector.detect('Bonjour, comment allez-vous?');
       expect(result.primary).toBeDefined();
       expect(result.primary?.language).toBe('fr');
       expect(result.primary?.confidence).toBeGreaterThan(0.9);
@@ -75,7 +75,7 @@ describe('FastTextLanguageDetector', () => {
     it('should detect Spanish text', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('Hola, ¿cómo estás?');
+      const result = await detector.detect('Hola, ¿cómo estás?');
       expect(result.primary).toBeDefined();
       expect(result.primary?.language).toBe('es');
       expect(result.primary?.confidence).toBeGreaterThan(0.9);
@@ -84,7 +84,7 @@ describe('FastTextLanguageDetector', () => {
     it('should detect German text', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('Guten Tag, wie geht es Ihnen?');
+      const result = await detector.detect('Guten Tag, wie geht es Ihnen?');
       expect(result.primary).toBeDefined();
       expect(result.primary?.language).toBe('de');
       expect(result.primary?.confidence).toBeGreaterThan(0.9);
@@ -93,7 +93,7 @@ describe('FastTextLanguageDetector', () => {
     it('should detect Chinese text', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('你好，你今天好吗？');
+      const result = await detector.detect('你好，你今天好吗？');
       expect(result.primary).toBeDefined();
       // FastText returns 'zh', but we convert it to 'chs' for compatibility
       expect(result.primary?.language).toBe('chs');
@@ -103,7 +103,7 @@ describe('FastTextLanguageDetector', () => {
     it('should detect Japanese text', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('こんにちは、お元気ですか？');
+      const result = await detector.detect('こんにちは、お元気ですか？');
       expect(result.primary).toBeDefined();
       expect(result.primary?.language).toBe('ja');
       expect(result.primary?.confidence).toBeGreaterThan(0.8);
@@ -112,7 +112,7 @@ describe('FastTextLanguageDetector', () => {
     it('should detect Arabic text', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('مرحبا، كيف حالك؟');
+      const result = await detector.detect('مرحبا، كيف حالك؟');
       expect(result.primary).toBeDefined();
       expect(result.primary?.language).toBe('ar');
       expect(result.primary?.confidence).toBeGreaterThan(0.8);
@@ -121,7 +121,7 @@ describe('FastTextLanguageDetector', () => {
     it('should detect Russian text', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('Привет, как дела?');
+      const result = await detector.detect('Привет, как дела?');
       expect(result.primary).toBeDefined();
       expect(result.primary?.language).toBe('ru');
       expect(result.primary?.confidence).toBeGreaterThan(0.8);
@@ -130,7 +130,7 @@ describe('FastTextLanguageDetector', () => {
     it('should return multiple predictions', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('Hello world');
+      const result = await detector.detect('Hello world');
       expect(result.predictions).toBeDefined();
       expect(result.predictions.length).toBeGreaterThan(0);
       expect(result.predictions[0]).toEqual(result.primary);
@@ -139,7 +139,7 @@ describe('FastTextLanguageDetector', () => {
     it('should handle empty string', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('');
+      const result = await detector.detect('');
       expect(result.primary).toBeNull();
       expect(result.predictions).toEqual([]);
     });
@@ -147,7 +147,7 @@ describe('FastTextLanguageDetector', () => {
     it('should handle whitespace-only string', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      const result = await detector.detectLanguage('   \n\t  ');
+      const result = await detector.detect('   \n\t  ');
       expect(result.primary).toBeNull();
       expect(result.predictions).toEqual([]);
     });
@@ -155,12 +155,12 @@ describe('FastTextLanguageDetector', () => {
     it('should throw error for non-string input', async () => {
       if (!fs.existsSync(modelPath)) return;
 
-      await expect(detector.detectLanguage(123 as any)).rejects.toThrow('Input must be a string');
+      await expect(detector.detect(123 as any)).rejects.toThrow('Input must be a string');
     });
 
     it('should throw error if model not loaded', async () => {
       const newDetector = new FastTextLanguageDetector();
-      await expect(newDetector.detectLanguage('test')).rejects.toThrow('Model not loaded');
+      await expect(newDetector.detect('test')).rejects.toThrow('Model not loaded');
     });
   });
 
@@ -176,7 +176,7 @@ describe('FastTextLanguageDetector', () => {
 
       const texts = ['Hello world', 'Bonjour le monde', 'Hola mundo', 'Hallo Welt', '你好世界'];
 
-      const promises = texts.map((text) => detector.detectLanguage(text));
+      const promises = texts.map((text) => detector.detect(text));
       const results = await Promise.all(promises);
 
       expect(results).toHaveLength(5);
@@ -195,7 +195,7 @@ describe('FastTextLanguageDetector', () => {
       await smallPoolDetector.load();
 
       const texts = Array(10).fill('Hello world');
-      const promises = texts.map((text) => smallPoolDetector.detectLanguage(text));
+      const promises = texts.map((text) => smallPoolDetector.detect(text));
       const results = await Promise.all(promises);
 
       expect(results).toHaveLength(10);
@@ -221,7 +221,7 @@ describe('FastTextLanguageDetector', () => {
 
       // Start 4 requests (1 processing, 2 queued, 1 should fail)
       for (let i = 0; i < 4; i++) {
-        promises.push(tinyQueueDetector.detectLanguage(`Test ${i}`).catch((err) => err));
+        promises.push(tinyQueueDetector.detect(`Test ${i}`).catch((err) => err));
       }
 
       const results = await Promise.all(promises);
@@ -246,8 +246,8 @@ describe('FastTextLanguageDetector', () => {
       if (!fs.existsSync(modelPath)) return;
 
       // Make some requests
-      await detector.detectLanguage('Hello world');
-      await detector.detectLanguage('Bonjour le monde');
+      await detector.detect('Hello world');
+      await detector.detect('Bonjour le monde');
 
       const stats = detector.getStats();
 
@@ -281,7 +281,7 @@ describe('FastTextLanguageDetector', () => {
       await detector.load();
       await detector.unload();
 
-      await expect(detector.detectLanguage('test')).rejects.toThrow('Model not loaded');
+      await expect(detector.detect('test')).rejects.toThrow('Model not loaded');
     });
   });
 
@@ -296,7 +296,7 @@ describe('FastTextLanguageDetector', () => {
       if (!fs.existsSync(modelPath)) return;
 
       const longText = 'Hello world. '.repeat(1000);
-      const result = await detector.detectLanguage(longText);
+      const result = await detector.detect(longText);
 
       expect(result.primary).toBeDefined();
       expect(result.primary?.language).toBe('en');
@@ -306,7 +306,7 @@ describe('FastTextLanguageDetector', () => {
       if (!fs.existsSync(modelPath)) return;
 
       const specialText = 'Hello @#$%^&*() world! 123456789';
-      const result = await detector.detectLanguage(specialText);
+      const result = await detector.detect(specialText);
 
       expect(result.primary).toBeDefined();
       expect(result.primary?.language).toBe('en');
@@ -316,7 +316,7 @@ describe('FastTextLanguageDetector', () => {
       if (!fs.existsSync(modelPath)) return;
 
       const multilineText = 'Hello\\nworld\\nthis\\nis\\na\\ntest';
-      const result = await detector.detectLanguage(multilineText);
+      const result = await detector.detect(multilineText);
 
       expect(result.primary).toBeDefined();
       expect(result.primary?.language).toBe('en');

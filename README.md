@@ -5,13 +5,15 @@ A fully-typed, production-ready FastText language detection wrapper for Node.js 
 ## Features
 
 - 🚀 **Full TypeScript Support** - Complete type definitions for all APIs
-- ⚡ **High Performance** - Worker pool architecture for concurrent processing
+- ⚡ **High Performance** - Worker pool architecture with built-in caching
 - 🔄 **Auto-recovery** - Automatic worker restart on failures
 - 📊 **Statistics Tracking** - Built-in performance monitoring
-- 🎯 **176 Languages** - Comprehensive language coverage
+- 🎯 **176 Languages** - Comprehensive language coverage with name mapping
 - 📦 **Zero Configuration** - Model auto-downloads during installation
 - 🧪 **Well Tested** - Comprehensive test coverage
-- 🔧 **Configurable** - Flexible options for pool size, timeouts, and queues
+- 🔧 **Highly Configurable** - Flexible options for pool size, caching, and more
+- 🎨 **Multiple APIs** - Simple, batch, and advanced detection methods
+- 💾 **Smart Caching** - Built-in LRU cache for repeated detections
 
 ## Requirements
 
@@ -52,26 +54,41 @@ RUN apt-get update && apt-get install -y fasttext
 ```typescript
 import { FastTextLanguageDetector } from 'fasttext-ts';
 
-// Create detector instance
-const detector = new FastTextLanguageDetector();
+// Create detector with caching enabled
+const detector = new FastTextLanguageDetector({
+  cache: true,
+  autoCleanup: true
+});
 
 // Load the model
 await detector.load();
 
-// Detect language
-const result = await detector.detectLanguage('Hello, how are you?');
+// Simple detection - returns just the language code
+const language = await detector.detectSimple('Hello, how are you?');
+console.log(language); // 'en'
+
+// Standard detection with full results
+const result = await detector.detect('Bonjour le monde');
 console.log(result.primary);
-// Output: { language: 'en', confidence: 0.99 }
+// Output: { language: 'fr', confidence: 0.99 }
 
-// Get all predictions
-console.log(result.predictions);
-// Output: [
-//   { language: 'en', confidence: 0.99 },
-//   { language: 'de', confidence: 0.01 },
-//   ...
-// ]
+// Detection with options
+const filtered = await detector.detect('Hola mundo', {
+  threshold: 0.8,      // Only high confidence
+  topK: 3,            // Top 3 languages
+  includeLanguageName: true
+});
+// Output: { language: 'es', languageName: 'Spanish', confidence: 0.99 }
 
-// Clean up when done
+// Batch detection for multiple texts
+const results = await detector.detectBatch([
+  'Hello world',
+  'Bonjour le monde',
+  'Hola mundo'
+]);
+// Returns array of results for each text
+
+// Clean up (automatic if autoCleanup: true)
 await detector.unload();
 ```
 
@@ -86,7 +103,7 @@ import { getInstance, unloadInstance } from 'fasttext-ts';
 const detector = await getInstance();
 
 // Use the detector
-const result = await detector.detectLanguage('Bonjour le monde');
+const result = await detector.detect('Bonjour le monde');
 console.log(result.primary?.language); // 'fr'
 
 // Cleanup (called automatically on process exit)
@@ -97,10 +114,21 @@ await unloadInstance();
 
 ```typescript
 const detector = new FastTextLanguageDetector({
+  // Model configuration
   modelPath: '/custom/path/to/model.bin',  // Custom model path
+  
+  // Worker pool configuration
   poolSize: 5,                             // Number of worker processes (default: 3)
   maxQueueSize: 1000,                      // Maximum queue size (default: 500)
   timeout: 10000,                          // Detection timeout in ms (default: 5000)
+  
+  // Caching configuration
+  cache: true,                             // Enable caching (default: false)
+  cacheSize: 2000,                         // Max cached entries (default: 1000)
+  cacheTTL: 7200000,                       // Cache TTL in ms (default: 3600000 - 1 hour)
+  
+  // Auto-cleanup
+  autoCleanup: true                        // Auto-unload on process exit (default: false)
 });
 ```
 
@@ -121,15 +149,36 @@ Load the model and initialize the worker pool.
 await detector.load();
 ```
 
-##### detectLanguage(text: string)
-Detect the language of the given text.
+##### detect(text: string, options?: DetectionOptions)
+Main detection method with full control over options.
 ```typescript
-const result = await detector.detectLanguage('Hello world');
+const result = await detector.detect('Hello world');
 // Returns: DetectionResult
+
+// With options
+const filtered = await detector.detect('Hello', {
+  threshold: 0.8,
+  topK: 3,
+  includeLanguageName: true
+});
+```
+
+##### detectSimple(text: string, threshold?: number)
+Simple detection - returns just the language code or null.
+```typescript
+const lang = await detector.detectSimple('Hello world');
+// Returns: 'en' | null
+```
+
+##### detectBatch(texts: string[], options?: DetectionOptions)
+Batch detection for multiple texts.
+```typescript
+const results = await detector.detectBatch(['Hello', 'Bonjour']);
+// Returns: DetectionResult[]
 ```
 
 ##### getStats()
-Get current pool statistics.
+Get current pool and cache statistics.
 ```typescript
 const stats = detector.getStats();
 // Returns: PoolStatistics
@@ -165,7 +214,17 @@ interface DetectorOptions {
   poolSize?: number;
   maxQueueSize?: number;
   timeout?: number;
-  confidenceThreshold?: number;
+  cache?: boolean;
+  cacheSize?: number;
+  cacheTTL?: number;
+  autoCleanup?: boolean;
+}
+
+interface DetectionOptions {
+  threshold?: number;           // Min confidence threshold
+  topK?: number;               // Return top K predictions
+  includeLanguageName?: boolean;  // Include human-readable names
+  returnAll?: boolean;         // Return all predictions or just primary
 }
 
 interface PoolStatistics {
@@ -223,6 +282,67 @@ On a typical machine with 3 workers:
 - Average latency: 5-20ms per detection
 - Memory usage: ~150MB (shared model)
 
+## New in v0.2.0
+
+### 🎯 Simple API
+```typescript
+// Just need the language? One line!
+const lang = await detector.detectSimple('Hello'); // 'en'
+```
+
+### 📦 Batch Processing
+```typescript
+// Process multiple texts efficiently
+const results = await detector.detectBatch([
+  'Hello world',
+  'Bonjour le monde',
+  'Hola mundo'
+]);
+```
+
+### 🔧 Detection Options
+```typescript
+// Fine-tune your detection
+const result = await detector.detect(text, {
+  threshold: 0.9,          // Only high confidence
+  topK: 3,                // Top 3 languages
+  includeLanguageName: true  // Get "English" not just "en"
+});
+```
+
+### 💾 Built-in Caching
+```typescript
+// Enable caching for repeated detections
+const detector = new FastTextLanguageDetector({ 
+  cache: true,
+  cacheSize: 2000,
+  cacheTTL: 7200000  // 2 hours
+});
+// Same text detection is 100-500x faster!
+```
+
+### 🌍 Language Names
+```typescript
+import { getLanguageName, LANGUAGE_NAMES } from 'fasttext-ts';
+
+// Get human-readable names
+console.log(getLanguageName('en'));  // 'English'
+console.log(getLanguageName('fr'));  // 'French'
+console.log(getLanguageName('ja'));  // 'Japanese'
+
+// Access full mapping
+console.log(LANGUAGE_NAMES);  // { en: 'English', fr: 'French', ... }
+```
+
+### 🧹 Auto-Cleanup
+```typescript
+// Automatic resource management
+const detector = new FastTextLanguageDetector({
+  autoCleanup: true  // Handles cleanup on process exit
+});
+// No need to manually call unload()
+```
+
 ## Advanced Usage
 
 ### Custom Logging
@@ -242,7 +362,7 @@ logger.info('Starting detection...');
 
 ```typescript
 try {
-  const result = await detector.detectLanguage(text);
+  const result = await detector.detect(text);
   if (result.primary && result.primary.confidence > 0.8) {
     console.log(`Detected: ${result.primary.language}`);
   } else {
@@ -380,6 +500,25 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 - Built on top of [FastText](https://fasttext.cc/) by Facebook Research
 - TypeScript implementation by Saw Thet Phyoe
+
+## Changelog
+
+### v0.2.0-beta.1
+- ✨ New simplified API: `detect()`, `detectSimple()`, `detectBatch()`
+- ✨ Removed legacy methods for cleaner API surface
+- ✨ Added built-in LRU cache for repeated detections
+- ✨ Added language name mapping (90+ languages)
+- ✨ Added `autoCleanup` option for automatic resource management
+- ✨ Added `DetectionOptions` interface for fine-tuning
+- 🔧 Improved TypeScript types and exports
+- 📚 Enhanced documentation with examples
+
+### v0.1.0-beta.1
+- 🎉 Initial beta release
+- Core language detection functionality
+- Worker pool architecture
+- TypeScript support
+- Auto-download model on install
 
 ## Support
 

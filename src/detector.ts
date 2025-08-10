@@ -1,9 +1,18 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
-import type { DetectionResult, DetectorOptions, Logger, PoolStatistics } from './types';
+import type {
+  DetectionResult,
+  DetectorOptions,
+  DetectionOptions,
+  Logger,
+  PoolStatistics,
+  LanguagePrediction,
+} from './types';
 import { ConsoleLogger, SilentLogger } from './logger';
 import { FastTextWorker } from './worker';
+import { DetectionCache } from './cache';
+import { getLanguageName } from './language-names';
 
 interface QueuedRequest {
   text: string;
@@ -17,7 +26,9 @@ export class FastTextLanguageDetector {
   private readonly poolSize: number;
   private readonly maxQueueSize: number;
   private readonly timeout: number;
+  private readonly autoCleanup: boolean;
   private logger: Logger;
+  private cache: DetectionCache | null = null;
 
   private workers: FastTextWorker[] = [];
   private requestQueue: QueuedRequest[] = [];
@@ -44,9 +55,22 @@ export class FastTextLanguageDetector {
     this.poolSize = options.poolSize || 3;
     this.maxQueueSize = options.maxQueueSize || 500;
     this.timeout = options.timeout || 5000;
+    this.autoCleanup = options.autoCleanup || false;
 
     // Use silent logger by default for library usage
     this.logger = new SilentLogger();
+
+    // Initialize cache if enabled
+    if (options.cache) {
+      this.cache = new DetectionCache(options.cacheSize || 1000, options.cacheTTL || 3600000);
+    }
+
+    // Setup auto-cleanup if enabled
+    if (this.autoCleanup) {
+      process.once('exit', () => void this.unload());
+      process.once('SIGINT', () => void this.unload());
+      process.once('SIGTERM', () => void this.unload());
+    }
   }
 
   /**
@@ -231,9 +255,12 @@ export class FastTextLanguageDetector {
   }
 
   /**
-   * Detect the language of the given text
+   * Main detection method with options
    */
-  async detectLanguage(text: string): Promise<DetectionResult> {
+  async detect(
+    text: string,
+    options: DetectionOptions = {}
+  ): Promise<DetectionResult> {
     // Input validation
     if (typeof text !== 'string') {
       throw new TypeError('Input must be a string');
@@ -247,15 +274,25 @@ export class FastTextLanguageDetector {
       throw new Error('Model not loaded. Call load() first.');
     }
 
+    // Check cache first
+    if (this.cache) {
+      const cached = this.cache.get(text);
+      if (cached) {
+        return this.applyOptions(cached, options);
+      }
+    }
+
     // Update statistics
     this.stats.totalRequests++;
 
     // Find available worker or queue request
     const worker = this.getAvailableWorker();
+    
+    let result: DetectionResult;
 
     if (worker) {
       // Execute immediately
-      return new Promise((resolve, reject) => {
+      result = await new Promise((resolve, reject) => {
         void this.executeRequest(worker, {
           text,
           resolve,
@@ -269,7 +306,7 @@ export class FastTextLanguageDetector {
         throw new Error(`Request queue is full (${this.maxQueueSize} requests)`);
       }
 
-      return new Promise((resolve, reject) => {
+      result = await new Promise((resolve, reject) => {
         this.stats.queuedRequests++;
         this.requestQueue.push({
           text,
@@ -279,6 +316,80 @@ export class FastTextLanguageDetector {
         });
       });
     }
+
+    // Store in cache
+    if (this.cache && result.primary) {
+      this.cache.set(text, result);
+    }
+
+    return this.applyOptions(result, options);
+  }
+
+  /**
+   * Simple language detection - returns just the language code
+   */
+  async detectSimple(text: string, threshold = 0.5): Promise<string | null> {
+    const result = await this.detect(text);
+
+    if (!result.primary || result.primary.confidence < threshold) {
+      return null;
+    }
+
+    return result.primary.language;
+  }
+
+  /**
+   * Batch language detection for multiple texts
+   */
+  async detectBatch(
+    texts: string[],
+    options: DetectionOptions = {}
+  ): Promise<DetectionResult[]> {
+    // Process in parallel but respect the worker pool
+    const results = await Promise.all(
+      texts.map((text) => this.detect(text, options))
+    );
+
+    return results;
+  }
+
+  /**
+   * Apply detection options to results
+   */
+  private applyOptions(result: DetectionResult, options: DetectionOptions): DetectionResult {
+    let predictions = [...result.predictions];
+
+    // Apply threshold filter
+    if (options.threshold !== undefined) {
+      const threshold = options.threshold;
+      predictions = predictions.filter((p) => p.confidence >= threshold);
+    }
+
+    // Limit to topK results
+    if (options.topK && options.topK > 0) {
+      predictions = predictions.slice(0, options.topK);
+    }
+
+    // Add language names if requested
+    if (options.includeLanguageName) {
+      predictions = predictions.map(
+        (p) =>
+          ({
+            ...p,
+            languageName: getLanguageName(p.language),
+          }) as LanguagePrediction
+      );
+    }
+
+    // Return all predictions or just primary
+    if (options.returnAll === false && result.primary) {
+      predictions = [result.primary];
+    }
+
+    return {
+      predictions,
+      primary: predictions.length > 0 ? predictions[0]! : null,
+    };
   }
 
   /**
